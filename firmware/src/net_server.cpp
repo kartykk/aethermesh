@@ -30,7 +30,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 #hbtn{background:none;border:none;color:#444;font-size:24px;cursor:pointer;padding:6px;border-radius:6px;-webkit-tap-highlight-color:transparent;min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center}
 #hbtn:active{background:#1e1e1e}
 #log{flex:1;overflow-y:auto;padding:12px 10px;display:flex;flex-direction:column;gap:8px;-webkit-overflow-scrolling:touch}
-.m{max-width:80%;padding:9px 13px;font-size:15px;line-height:1.45;word-break:break-word}
+.m{max-width:82%;padding:9px 13px;font-size:15px;line-height:1.45;word-break:break-word}
 .m.r{align-self:flex-start;background:#1c1c1c;border-radius:4px 16px 16px 4px}
 .m.s{align-self:flex-end;background:#0b2e0b;border-radius:16px 4px 4px 16px;text-align:right}
 .mn{font-size:11px;font-weight:700;margin-bottom:4px}
@@ -40,9 +40,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .mm{font-size:10px;color:#2a2a2a;margin-top:5px}
 .ack{color:#2a2a2a;margin-left:4px}
 .ack.ok{color:#0f0}
+.ack.fail{color:#f44}
+.dm-tag{font-size:10px;color:#444;margin-left:3px}
+#dm-bar{display:none;background:#0a1f0a;border-top:1px solid #0f2a0f;padding:8px 14px;font-size:12px;color:#0c0;flex-shrink:0;align-items:center;gap:8px}
+#dm-bar.v{display:flex}
+#dm-cancel{margin-left:auto;background:none;border:none;color:#3a3a3a;cursor:pointer;font-size:20px;min-width:36px;min-height:36px;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent}
+#dm-cancel:active{color:#f44}
 #inp{background:#111;border-top:1px solid #1e1e1e;padding:10px 12px;padding-bottom:max(10px,env(safe-area-inset-bottom));display:flex;gap:10px;align-items:center;flex-shrink:0}
 #mi{flex:1;background:#1c1c1c;color:#e0e0e0;border:1.5px solid #252525;border-radius:22px;padding:11px 18px;font-size:16px;outline:none;-webkit-appearance:none;min-height:44px}
 #mi:focus{border-color:#0f0}
+#mi.dm-mode{border-color:#0a3a0a}
 #txb{background:#0f0;color:#000;border:none;border-radius:50%;width:44px;height:44px;font-size:20px;font-weight:900;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent}
 #txb:active{opacity:.65;transform:scale(.95)}
 #ob{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9;align-items:flex-end;justify-content:center}
@@ -68,8 +75,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .dng{border-color:#3a0000!important;color:#663333!important}
 .dng:active{background:#200!important;color:#f44!important}
 #nodes-wrap{margin-top:4px}
-.node-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #1a1a1a;font-size:13px}
+.node-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #1a1a1a;font-size:13px;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .node-row:last-child{border-bottom:none}
+.node-row:active{opacity:.6}
+.dm-hint{color:#0f0;font-size:10px;font-weight:700;margin-left:6px}
 </style>
 </head>
 <body>
@@ -84,6 +93,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
  <button id="hbtn" onclick="openS()" title="Settings">&#9881;</button>
 </div>
 <div id="log"></div>
+<div id="dm-bar">
+ <span>&#8594;&nbsp;<b id="dm-name" style="color:#0f0"></b>&nbsp;<span style="color:#333;font-size:11px">private message</span></span>
+ <button id="dm-cancel" onclick="clearDm()" title="Back to all">&#10005;</button>
+</div>
 <div id="inp">
  <input id="mi" placeholder="Message..." autocomplete="off" maxlength="180"
   onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();tx()}">
@@ -101,14 +114,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
  <div class="sr">
   <label>Channel</label>
   <input id="sg" maxlength="30" placeholder="default" autocomplete="off">
-  <small>Set same channel on both nodes to communicate. No reboot needed.</small>
+  <small>Both nodes must use the same channel. No reboot needed.</small>
  </div>
  <div class="sr">
-  <label>WiFi PIN &nbsp;<span style="color:#333;font-size:10px;font-weight:400;text-transform:none">(8 digits &#8212; also your WiFi password)</span></label>
+  <label>WiFi PIN &nbsp;<span style="color:#333;font-size:10px;font-weight:400;text-transform:none">(8 digits — also your WiFi password)</span></label>
   <input id="sp" type="tel" inputmode="numeric" pattern="[0-9]{8}" maxlength="8" placeholder="Leave blank to keep current" autocomplete="off">
   <small>Default first-time PIN: 12345678</small>
  </div>
- <div class="sd">&#x25CB; Router WiFi (optional)<br>Gives this node internet via your home/farm router. Phone keeps mobile data for internet.</div>
+ <div class="sr">
+  <label>Mesh Key &nbsp;<span style="color:#333;font-size:10px;font-weight:400;text-transform:none">(shared passphrase — all nodes must match)</span></label>
+  <input id="smk" type="password" maxlength="60" placeholder="Leave blank to keep current" autocomplete="new-password">
+  <small>Default: AetherMesh &mdash; change for private network isolation. Update all nodes simultaneously.</small>
+ </div>
+ <div class="sd">&#x25CB; Router WiFi (optional)<br>Gives this node internet via your home router. Phone keeps mobile data.</div>
  <div class="s2">
   <div class="sr"><label>Router SSID</label><input id="srs" maxlength="60" placeholder="WiFi name" autocomplete="off"></div>
   <div class="sr"><label>Router Pass</label><input id="srp" type="password" maxlength="60" placeholder="&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;" autocomplete="off"></div>
@@ -118,33 +136,35 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <button onclick="exp()">&#8659;&nbsp;Export Chat</button>
   <button class="dng" onclick="clr()">&#10006;&nbsp;Clear Messages</button>
  </div>
- <div class="sd">&#x25CF; Nodes on Mesh</div>
+ <div class="sd">&#x25CF; Nodes on Mesh &nbsp;<span style="color:#333">(tap to DM)</span></div>
  <div id="nodes-wrap"><span style="color:#2a2a2a;font-size:13px">No nodes seen yet. Beacon every 30s.</span></div>
 </div>
 </div>
 <script>
 var last=0,myId='',myGrp='default',msgMap={};
+var dmTarget='all',dmName='';
 var log=document.getElementById('log');
 function esc(s){return(''+s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 function fts(t){
- if(t>1577836800){// real unix time (after 2020)
+ if(t>1577836800){
   var d=new Date(t*1000);
   return d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
  }
- // uptime seconds
  return String(Math.floor(t/3600)).padStart(2,'0')+':'+String(Math.floor((t%3600)/60)).padStart(2,'0');
 }
 function addMsg(m){
- if(msgMap['m'+m.id])return;// dedup
+ if(msgMap['m'+m.id])return;
  var mine=(m.from===myId);
  var d=document.createElement('div');
  d.className='m '+(mine?'s':'r');
  var nm=esc(m.fromName||m.from);
  var rs=m.rssi?' \xb7 '+m.rssi+'dBm \xb7 '+m.hops+'hop':'';
- var ackHtml=mine?'<span class="ack" id="ack-'+m.id+'">&#10003;</span>':'';
+ var isDM=(m.to&&m.to!=='all');
+ var dmTag=isDM?'<span class="dm-tag">\u2192 '+(m.to===myId?'you':esc(m.to))+'</span>':'';
+ var ackHtml=mine?'<span class="ack" id="ack-'+m.id+'">\u2713</span>':'';
  d.innerHTML='<div class="mn">'+(mine?'You':nm)+'</div>'
   +'<div class="mb">'+esc(m.text)+'</div>'
-  +'<div class="mm">'+fts(m.ts)+rs+ackHtml+'</div>';
+  +'<div class="mm">'+fts(m.ts)+rs+dmTag+ackHtml+'</div>';
  log.appendChild(d);
  msgMap['m'+m.id]=true;
  if(m.ts>last)last=m.ts;
@@ -154,6 +174,10 @@ function markAck(id){
  var el=document.getElementById('ack-'+id);
  if(el){el.textContent='\u2713\u2713';el.className='ack ok';}
 }
+function markFail(id){
+ var el=document.getElementById('ack-'+id);
+ if(el){el.textContent='\u2717';el.className='ack fail';}
+}
 function updateNodes(nodes){
  var el=document.getElementById('nodes-wrap');
  if(!nodes||!nodes.length){
@@ -161,9 +185,26 @@ function updateNodes(nodes){
   return;
  }
  el.innerHTML=nodes.map(function(n){
-  return '<div class="node-row"><span><b style="color:#0ff">'+esc(n.name||n.id)+'</b> <span style="color:#333">['+esc(n.id)+']</span></span>'
+  return '<div class="node-row" onclick="setDm(\''+n.id+'\',\''+esc(n.name||n.id)+'\')">'
+   +'<span><b style="color:#0ff">'+esc(n.name||n.id)+'</b>'
+   +' <span style="color:#333">['+esc(n.id)+']</span>'
+   +'<span class="dm-hint">DM \u2192</span></span>'
    +'<span style="color:#444">'+n.rssi+'dBm</span></div>';
  }).join('');
+}
+function setDm(id,name){
+ dmTarget=id; dmName=name;
+ document.getElementById('dm-name').textContent=name;
+ document.getElementById('dm-bar').classList.add('v');
+ document.getElementById('mi').classList.add('dm-mode');
+ document.getElementById('mi').placeholder='DM \u2192 '+name+'...';
+ closeS();
+}
+function clearDm(){
+ dmTarget='all'; dmName='';
+ document.getElementById('dm-bar').classList.remove('v');
+ document.getElementById('mi').classList.remove('dm-mode');
+ document.getElementById('mi').placeholder='Message...';
 }
 
 // WebSocket
@@ -179,6 +220,7 @@ function connectWS(){
     var d=JSON.parse(e.data);
     if(d.type==='msg')addMsg(d);
     else if(d.type==='ack')markAck(d.id);
+    else if(d.type==='fail')markFail(d.id);
     else if(d.type==='nodes')updateNodes(d.nodes);
    }catch(err){}
   };
@@ -186,7 +228,6 @@ function connectWS(){
 }
 connectWS();
 
-// Polling fallback when WS disconnected + initial history load
 async function load(){
  try{var d=await(await fetch('/api/messages?after='+last)).json();
   if(d&&d.length)d.forEach(addMsg);}catch(e){}
@@ -196,7 +237,7 @@ async function tx(){
  if(!v)return;
  document.getElementById('mi').value='';
  try{await fetch('/api/send',{method:'POST',headers:{'Content-Type':'application/json'},
-  body:JSON.stringify({to:'all',msg:v})});}catch(e){}
+  body:JSON.stringify({to:dmTarget,msg:v})});}catch(e){}
 }
 async function clr(){
  if(!confirm('Clear all messages?'))return;
@@ -230,6 +271,7 @@ function openS(){
   document.getElementById('sn').value=d.name||'';
   document.getElementById('sp').value='';
   document.getElementById('sg').value=d.group||'';
+  document.getElementById('smk').value='';
   document.getElementById('srs').value=d.router_ssid||'';
   document.getElementById('srp').value='';
   updateNodes(res[1]);
@@ -243,6 +285,7 @@ async function saveS(){
   alert('WiFi PIN must be exactly 8 digits');return;}
  var body={name:document.getElementById('sn').value,pass:pin,
   group:document.getElementById('sg').value,
+  mesh_pass:document.getElementById('smk').value,
   router_ssid:document.getElementById('srs').value,
   router_pass:document.getElementById('srp').value};
  try{var d=await(await fetch('/api/settings',{method:'POST',
@@ -259,11 +302,9 @@ async function saveS(){
  catch(e){alert('Save failed.');}
 }
 
-// Sync browser time to ESP on load
 fetch('/api/time',{method:'POST',headers:{'Content-Type':'application/json'},
  body:JSON.stringify({ts:Math.floor(Date.now()/1000)})}).catch(function(){});
 
-// Load history + kick off polling
 load();
 stat();
 setInterval(function(){if(!wsOk)load();},3000);
@@ -282,6 +323,8 @@ static AsyncWebSocket                 _ws("/ws");
 static AsyncWebServer                 _http(HTTP_PORT);
 
 struct BodyCtx { char buf[512]; size_t len = 0; };
+
+static uint32_t _sendCount = 0; // counter for app-level message ids
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 static String apSSID() {
@@ -321,12 +364,15 @@ static void handleTcpLine(AsyncClient* c, const String& line) {
         const char* to  = doc["to"]  | "all";
         const char* msg = doc["msg"] | "";
         if (!*msg) { tcpSend(c, "{\"error\":\"empty msg\"}\n"); return; }
-        LoraMesh::send(to, msg);
-        Msg m; m.id="tcp"; m.from=LoraMesh::nodeId(); m.fromName=Settings::nodeName();
+        char clientId[16];
+        snprintf(clientId, sizeof(clientId), "t%lu", ++_sendCount);
+        LoraMesh::send(to, msg, clientId);
+        Msg m; m.id=String(clientId); m.from=LoraMesh::nodeId(); m.fromName=Settings::nodeName();
         m.to=to; m.text=msg; m.group=Settings::group();
         m.rssi=0; m.snr=0; m.hops=0; m.ts=MeshTime::now();
         Storage::save(m); NetServer::notify(m);
-        tcpSend(c, "{\"ok\":true}\n");
+        String out="{\"ok\":true,\"id\":\""+String(clientId)+"\"}\n";
+        tcpSend(c, out);
 
     } else if (strcmp(cmd, "messages") == 0) {
         auto msgs = Storage::get();
@@ -409,7 +455,6 @@ static void setupRoutes() {
         req->send(200, "application/json", out);
     });
 
-    // POST /api/time — browser sends its Unix timestamp so ESP can show real clock
     _http.on("/api/time", HTTP_POST,
         [](AsyncWebServerRequest* req) {
             BodyCtx* ctx = (BodyCtx*)req->_tempObject;
@@ -419,7 +464,7 @@ static void setupRoutes() {
                 req->send(400); return;
             }
             uint32_t ts = doc["ts"] | 0;
-            if (ts > 1577836800) {  // sanity: after year 2020
+            if (ts > 1577836800) {
                 MeshTime::setFromBrowser(ts);
                 req->send(200, "application/json", "{\"ok\":true}");
             } else {
@@ -440,8 +485,14 @@ static void setupRoutes() {
             const char* to  = doc["to"]  | "all";
             const char* msg = doc["msg"] | "";
             if (!*msg) { req->send(400, "application/json", "{\"error\":\"empty msg\"}"); return; }
-            LoraMesh::send(to, msg);
-            Msg m; m.id="tx"; m.from=LoraMesh::nodeId(); m.fromName=Settings::nodeName();
+
+            char clientId[16];
+            snprintf(clientId, sizeof(clientId), "t%lu", ++_sendCount);
+
+            LoraMesh::send(to, msg, clientId);
+
+            Msg m; m.id=String(clientId); m.from=LoraMesh::nodeId();
+            m.fromName=Settings::nodeName();
             m.to=to; m.text=msg; m.group=Settings::group();
             m.rssi=0; m.snr=0; m.hops=0; m.ts=MeshTime::now();
             Storage::save(m); NetServer::notify(m);
@@ -455,6 +506,7 @@ static void setupRoutes() {
         doc["name"]        = Settings::nodeName();
         doc["group"]       = Settings::group();
         doc["router_ssid"] = Settings::routerSSID();
+        // mesh_pass is intentionally not returned (write-only for security)
         String out; serializeJson(doc, out);
         req->send(200, "application/json", out);
     });
@@ -476,13 +528,13 @@ static void setupRoutes() {
                     req->send(400, "application/json", "{\"error\":\"PIN must be 8 digits\"}"); return;
                 }
             }
-            // Detect if WiFi credentials changed (requires reboot)
             bool wifiChanged = (pin && strlen(pin) == 8) ||
                                (String(doc["router_ssid"]|"") != Settings::routerSSID()) ||
                                (String(doc["router_pass"]|"").length() > 0);
 
             Settings::save(doc["name"]|"", pin, doc["group"]|"",
-                           doc["router_ssid"]|"", doc["router_pass"]|"");
+                           doc["router_ssid"]|"", doc["router_pass"]|"",
+                           doc["mesh_pass"]|"");
 
             if (wifiChanged) {
                 req->send(200, "application/json", "{\"ok\":true,\"reboot\":true}");
@@ -519,7 +571,6 @@ static void setupRoutes() {
             uint32_t t = m.ts;
             char tbuf[24];
             if (t > 1577836800) {
-                // real time — format as date+time
                 time_t tt = (time_t)t;
                 struct tm* ti = gmtime(&tt);
                 strftime(tbuf, sizeof(tbuf), "%Y-%m-%d %H:%M", ti);
@@ -527,7 +578,8 @@ static void setupRoutes() {
                 snprintf(tbuf, sizeof(tbuf), "%02u:%02u:%02u", t/3600, (t%3600)/60, t%60);
             }
             String nm = m.fromName.isEmpty() ? m.from : m.fromName;
-            out += "[" + String(tbuf) + "] " + nm + ": " + m.text + "\n";
+            String toTag = (m.to != "all") ? " [DM→" + m.to + "]" : "";
+            out += "[" + String(tbuf) + "] " + nm + toTag + ": " + m.text + "\n";
         }
         req->send(200, "text/plain", out);
     });
@@ -549,7 +601,6 @@ static void setupRoutes() {
 namespace NetServer {
 
 void notify(const Msg& msg) {
-    // WebSocket push (type: msg)
     JsonDocument doc;
     doc["type"]     = "msg";
     doc["id"]       = msg.id;
@@ -565,7 +616,6 @@ void notify(const Msg& msg) {
     String wsJson; serializeJson(doc, wsJson);
     _ws.textAll(wsJson);
 
-    // TCP push (legacy format)
     String tcpJson = msgToJson(msg) + "\n";
     if (_tcpMutex) xSemaphoreTake(_tcpMutex, portMAX_DELAY);
     for (auto c : _tcpClients) tcpSend(c, tcpJson);
@@ -573,8 +623,11 @@ void notify(const Msg& msg) {
 }
 
 void notifyAck(const String& msgId) {
-    String json = "{\"type\":\"ack\",\"id\":\"" + msgId + "\"}";
-    _ws.textAll(json);
+    _ws.textAll("{\"type\":\"ack\",\"id\":\"" + msgId + "\"}");
+}
+
+void notifyFail(const String& msgId) {
+    _ws.textAll("{\"type\":\"fail\",\"id\":\"" + msgId + "\"}");
 }
 
 void init() {
@@ -592,7 +645,6 @@ void init() {
         WiFi.onEvent([](WiFiEvent_t e, WiFiEventInfo_t info) {
             if (e == ARDUINO_EVENT_WIFI_STA_GOT_IP) {
                 Serial.printf("[WiFi] Router: %s\n", WiFi.localIP().toString().c_str());
-                // Sync time via NTP now that we have internet
                 configTime(0, 0, "pool.ntp.org", "time.google.com");
                 xTaskCreate([](void*) {
                     delay(3000);
@@ -611,19 +663,14 @@ void init() {
         Serial.printf("[WiFi] AP: %-22s  IP: %s\n", ssid.c_str(), WiFi.softAPIP().toString().c_str());
     }
 
-    // WebSocket
     _ws.onEvent([](AsyncWebSocket*, AsyncWebSocketClient*, AwsEventType type,
-                   void*, uint8_t*, size_t) {
-        // No special handling needed — we push-only
-        (void)type;
-    });
+                   void*, uint8_t*, size_t) { (void)type; });
     _http.addHandler(&_ws);
 
     setupRoutes();
     _http.begin();
     Serial.printf("[HTTP] port %d\n", HTTP_PORT);
 
-    // TCP
     _tcpServer = new AsyncServer(TCP_PORT);
     _tcpServer->onClient([](void*, AsyncClient* c) {
         xSemaphoreTake(_tcpMutex, portMAX_DELAY);
@@ -662,7 +709,6 @@ void init() {
 }
 
 void loop() {
-    // Cleanup stale WS clients periodically
     static uint32_t lastClean = 0;
     if (millis() - lastClean > 10000) {
         _ws.cleanupClients();

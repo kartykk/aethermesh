@@ -1,7 +1,7 @@
 #pragma once
 #include <Arduino.h>
 
-#define FIRMWARE_VER      "0.3.0"
+#define FIRMWARE_VER      "0.4.0"
 
 // LoRa — SX1278 RA-02
 #define LORA_SS           5
@@ -18,24 +18,21 @@
 #define ACK_TTL           3      // max hops for ACK packets
 #define BEACON_INTERVAL   30000  // ms between beacon broadcasts
 #define ACK_DELAY_MS      250    // ms delay before sending ACK (let sender switch to RX)
-#define ACK_TIMEOUT_MS    30000  // ms before giving up on ACK
+#define RETRY_COUNT       2      // retries after first ACK timeout
+#define RETRY_INTERVAL_MS 8000   // ms between retry attempts
 #define MAX_KNOWN_NODES   12     // max nodes tracked in memory
 
 // WiFi AP defaults — overridden by NVS settings
 #define WIFI_SSID_PFX     "AetherMesh"
-#define DEFAULT_AP_PASS   "12345678"   // 8-digit PIN (WPA2 min is 8 chars)
+#define DEFAULT_AP_PASS   "12345678"    // 8-digit PIN (WPA2 min is 8 chars)
 #define DEFAULT_GROUP     "default"
+#define DEFAULT_MESH_PASS "AetherMesh"  // network passphrase → SHA-256 → AES-128 key
 #define WIFI_CHANNEL      6
 #define WIFI_MAX_CLIENTS  4
 
 // Network
 #define HTTP_PORT         80
 #define TCP_PORT          4403
-
-// AES-128-CTR shared key — change before deploying
-#define MESH_KEY { 0x4C,0x6F,0x52,0x61,0x4D,0x65,0x73,0x68, \
-                   0x4B,0x65,0x79,0x32,0x30,0x32,0x35,0x21 }
-// ASCII: "LoRaMeshKey2025!"
 
 // Storage
 #define MSG_FILE          "/msgs.json"

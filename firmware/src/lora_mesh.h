@@ -26,12 +26,14 @@ struct NodeInfo {
 };
 
 namespace LoraMesh {
-    extern std::function<void(const Msg&)>    onRx;   // regular message received
-    extern std::function<void(const String&)> onAck;  // ACK received (arg = msg id)
+    extern std::function<void(const Msg&)>    onRx;   // message received
+    extern std::function<void(const String&)> onAck;  // ACK received (arg = clientId)
+    extern std::function<void(const String&)> onFail; // all retries exhausted (arg = clientId)
 
     void   init();
     void   loop();
-    bool   send(const char* to, const char* text);
+    // clientId: app-level id for onAck/onFail callbacks; if empty, uid hex is used
+    bool   send(const char* to, const char* text, const char* clientId = "");
     String nodeId();
     std::vector<NodeInfo> getNodes();
 }

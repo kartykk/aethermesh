@@ -2,16 +2,17 @@
 #include <Arduino.h>
 
 namespace Settings {
-    void   init();           // load from NVS; call after LoraMesh::init()
+    void   init();
 
-    String nodeName();       // user display name, e.g. "Alice"
-    String apPass();         // AP WiFi password
-    String group();          // channel — both nodes must match to communicate
-    String routerSSID();     // optional: router to join for internet
-    String routerPass();     // optional: router password
+    String nodeName();
+    String apPass();
+    String group();
+    String meshPass();               // network encryption passphrase
+    void   meshKey(uint8_t out[16]); // SHA-256(meshPass)[0..15] — AES-128 key
+    String routerSSID();
+    String routerPass();
 
-    // Save all fields and restart.
-    // Pass empty string for pass to keep existing password.
     bool save(const char* name, const char* pass, const char* grp,
-              const char* routerSSID, const char* routerPass);
+              const char* routerSSID, const char* routerPass,
+              const char* meshPass = nullptr);
 }

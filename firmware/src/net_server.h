@@ -4,6 +4,7 @@
 namespace NetServer {
     void init();
     void loop();
-    void notify(const Msg& msg);       // push new message to all clients
-    void notifyAck(const String& id);  // push ACK confirmation to WebSocket clients
+    void notify(const Msg& msg);
+    void notifyAck(const String& id);   // push ACK ✓✓ to WebSocket clients
+    void notifyFail(const String& id);  // push FAIL ✗ to WebSocket clients
 }

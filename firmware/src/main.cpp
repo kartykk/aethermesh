@@ -21,6 +21,10 @@ void setup() {
         NetServer::notifyAck(id);
     };
 
+    LoraMesh::onFail = [](const String& id) {
+        NetServer::notifyFail(id);
+    };
+
     LoraMesh::init();
 
     Settings::init();  // after LoraMesh so nodeId() is ready for default name
