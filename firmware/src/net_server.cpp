@@ -6,7 +6,6 @@
 #include "mesh_time.h"
 #include <WiFi.h>
 #include <DNSServer.h>
-#include <esp_wifi.h>
 #include <ESPAsyncWebServer.h>
 #include <AsyncWebSocket.h>
 #include <AsyncTCP.h>
@@ -660,24 +659,6 @@ void init() {
     String apPw  = Settings::apPass();
     String rSSID = Settings::routerSSID();
     String rPass = Settings::routerPass();
-
-    // ── Hide SSID when connected, show again when last client leaves ──────────
-    WiFi.onEvent([](WiFiEvent_t e, WiFiEventInfo_t info) {
-        wifi_config_t conf;
-        if (e == ARDUINO_EVENT_WIFI_AP_STACONNECTED) {
-            esp_wifi_get_config(WIFI_IF_AP, &conf);
-            conf.ap.ssid_hidden = 1;
-            esp_wifi_set_config(WIFI_IF_AP, &conf);
-            Serial.println("[WiFi] client connected — SSID hidden");
-        } else if (e == ARDUINO_EVENT_WIFI_AP_STADISCONNECTED) {
-            if (WiFi.softAPgetStationNum() == 0) {
-                esp_wifi_get_config(WIFI_IF_AP, &conf);
-                conf.ap.ssid_hidden = 0;
-                esp_wifi_set_config(WIFI_IF_AP, &conf);
-                Serial.println("[WiFi] all clients gone — SSID visible");
-            }
-        }
-    });
 
     if (rSSID.length() > 0) {
         WiFi.mode(WIFI_AP_STA);
