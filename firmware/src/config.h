@@ -1,7 +1,7 @@
 #pragma once
 #include <Arduino.h>
 
-#define FIRMWARE_VER      "0.4.0"
+#define FIRMWARE_VER      "0.5.0"
 
 // LoRa — SX1278 RA-02
 #define LORA_SS           5
@@ -29,6 +29,9 @@
 #define DEFAULT_MESH_PASS "AetherMesh"  // network passphrase → SHA-256 → AES-128 key
 #define WIFI_CHANNEL      6
 #define WIFI_MAX_CLIENTS  4
+
+// LED — ESP32 dev board onboard LED
+#define LED_PIN           2    // GPIO2 (most ESP32 dev boards)
 
 // Network
 #define HTTP_PORT         80

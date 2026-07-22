@@ -47,7 +47,8 @@ static int        _pendingLen = 0;
 static NodeInfo _nodes[MAX_KNOWN_NODES];
 static int      _nodeCount = 0;
 
-static uint32_t _lastBeacon = 0;
+static uint32_t _lastBeacon    = 0;
+static uint32_t _activityUntil = 0; // LED fast-blink window
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 static bool seenBefore(uint32_t uid) {
@@ -102,6 +103,7 @@ static void transmitRaw(uint8_t* header, const uint8_t* payload, size_t plen) {
     LoRa.write(header, 8);
     LoRa.write(cipher, plen);
     LoRa.endPacket();
+    _activityUntil = millis() + 300;
 }
 
 // Build and transmit a message packet. Returns uid (0 on failure).
@@ -240,6 +242,8 @@ void init() {
                   nodeId().c_str(), LORA_SF, RETRY_COUNT);
 }
 
+bool isActive() { return millis() < _activityUntil; }
+
 bool send(const char* to, const char* text, const char* clientId) {
     if (!_txQueue) return false;
     TxItem item;
@@ -297,6 +301,8 @@ void loop() {
     // 5. Receive
     int pktSize = LoRa.parsePacket();
     if (pktSize < 9) return;
+
+    _activityUntil = millis() + 300;
 
     uint8_t buf[256];
     int n = 0;

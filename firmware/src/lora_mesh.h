@@ -36,4 +36,5 @@ namespace LoraMesh {
     bool   send(const char* to, const char* text, const char* clientId = "");
     String nodeId();
     std::vector<NodeInfo> getNodes();
+    bool   isActive(); // true for ~300ms after any TX or RX
 }

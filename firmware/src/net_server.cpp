@@ -5,6 +5,8 @@
 #include "lora_mesh.h"
 #include "mesh_time.h"
 #include <WiFi.h>
+#include <DNSServer.h>
+#include <esp_wifi.h>
 #include <ESPAsyncWebServer.h>
 #include <AsyncWebSocket.h>
 #include <AsyncTCP.h>
@@ -321,6 +323,7 @@ static std::map<AsyncClient*, String> _rxBuf;
 static SemaphoreHandle_t              _tcpMutex   = nullptr;
 static AsyncWebSocket                 _ws("/ws");
 static AsyncWebServer                 _http(HTTP_PORT);
+static DNSServer                      _dns;
 
 struct BodyCtx { char buf[512]; size_t len = 0; };
 
@@ -588,12 +591,32 @@ static void setupRoutes() {
         Storage::clear(); req->send(200, "application/json", "{\"ok\":true}");
     });
 
+    // ── Captive portal detection endpoints ────────────────────────────────────
+    // Android /generate_204, /gen_204 → redirect triggers captive portal UI
+    // iOS /hotspot-detect.html → redirect triggers captive portal Safari popup
+    // Windows /ncsi.txt, /connecttest.txt → redirect shows limited connectivity
+    auto _redir = [](AsyncWebServerRequest* req) {
+        AsyncWebServerResponse* r = req->beginResponse(302, "text/plain", "");
+        r->addHeader("Location", "http://192.168.4.1/");
+        req->send(r);
+    };
+    _http.on("/generate_204",           HTTP_GET, _redir);
+    _http.on("/gen_204",                HTTP_GET, _redir);
+    _http.on("/hotspot-detect.html",    HTTP_GET, _redir);
+    _http.on("/library/test/success.html", HTTP_GET, _redir);
+    _http.on("/ncsi.txt",               HTTP_GET, _redir);
+    _http.on("/connecttest.txt",        HTTP_GET, _redir);
+    _http.on("/redirect",               HTTP_GET, _redir);
+
     DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", "*");
     DefaultHeaders::Instance().addHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
     DefaultHeaders::Instance().addHeader("Access-Control-Allow-Headers", "Content-Type");
     _http.onNotFound([](AsyncWebServerRequest* req) {
         if (req->method() == HTTP_OPTIONS) { req->send(204); return; }
-        req->send(404, "application/json", "{\"error\":\"not found\"}");
+        // Captive portal fallback — redirect all unknown GET requests to main UI
+        AsyncWebServerResponse* r = req->beginResponse(302, "text/plain", "");
+        r->addHeader("Location", "http://192.168.4.1/");
+        req->send(r);
     });
 }
 
@@ -638,6 +661,24 @@ void init() {
     String rSSID = Settings::routerSSID();
     String rPass = Settings::routerPass();
 
+    // ── Hide SSID when connected, show again when last client leaves ──────────
+    WiFi.onEvent([](WiFiEvent_t e, WiFiEventInfo_t info) {
+        wifi_config_t conf;
+        if (e == ARDUINO_EVENT_WIFI_AP_STACONNECTED) {
+            esp_wifi_get_config(WIFI_IF_AP, &conf);
+            conf.ap.ssid_hidden = 1;
+            esp_wifi_set_config(WIFI_IF_AP, &conf);
+            Serial.println("[WiFi] client connected — SSID hidden");
+        } else if (e == ARDUINO_EVENT_WIFI_AP_STADISCONNECTED) {
+            if (WiFi.softAPgetStationNum() == 0) {
+                esp_wifi_get_config(WIFI_IF_AP, &conf);
+                conf.ap.ssid_hidden = 0;
+                esp_wifi_set_config(WIFI_IF_AP, &conf);
+                Serial.println("[WiFi] all clients gone — SSID visible");
+            }
+        }
+    });
+
     if (rSSID.length() > 0) {
         WiFi.mode(WIFI_AP_STA);
         WiFi.softAP(ssid.c_str(), apPw.c_str(), WIFI_CHANNEL, 0, WIFI_MAX_CLIENTS);
@@ -662,6 +703,9 @@ void init() {
         WiFi.softAP(ssid.c_str(), apPw.c_str(), WIFI_CHANNEL, 0, WIFI_MAX_CLIENTS);
         Serial.printf("[WiFi] AP: %-22s  IP: %s\n", ssid.c_str(), WiFi.softAPIP().toString().c_str());
     }
+
+    // ── Captive portal DNS — hijack all DNS to point at this device ───────────
+    _dns.start(53, "*", WiFi.softAPIP());
 
     _ws.onEvent([](AsyncWebSocket*, AsyncWebSocketClient*, AwsEventType type,
                    void*, uint8_t*, size_t) { (void)type; });
@@ -709,6 +753,8 @@ void init() {
 }
 
 void loop() {
+    _dns.processNextRequest();
+
     static uint32_t lastClean = 0;
     if (millis() - lastClean > 10000) {
         _ws.cleanupClients();
